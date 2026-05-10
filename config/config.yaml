@@ -1,0 +1,16 @@
+rtmp_listen: ":1935"
+rtmp_app: "live"
+rtmp_stream: "stream"
+http_listen: ":8080"
+output_dir: "/data/hls"
+master_name: "index.m3u8"
+segment_time: 3
+segment_count: 5
+ffmpeg_bin: "ffmpeg"
+video_codec: "libx264"
+video_preset: "veryfast"
+video_tune: "zerolatency"
+video_fps: 25
+audio_codec: "aac"
+audio_bitrate: "128k"
+audio_sample_rate: 48000
