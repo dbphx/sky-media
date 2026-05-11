@@ -135,7 +135,10 @@ func TestNormalizeTimestamp(t *testing.T) {
 	if got := h.normalizeTimestamp(10286736); got != 33 {
 		t.Fatalf("expected normalized delta 33, got %d", got)
 	}
-	if got := h.normalizeTimestamp(10286600); got != 0 {
-		t.Fatalf("timestamp smaller than base should clamp to 0, got %d", got)
+	if got := h.normalizeTimestamp(10286600); got != 34 {
+		t.Fatalf("timestamp smaller than base should be forced monotonic, got %d", got)
+	}
+	if got := h.normalizeTimestamp(10286700); got != 35 {
+		t.Fatalf("timestamp lower than last output should still move forward, got %d", got)
 	}
 }

@@ -275,6 +275,8 @@ type rtmpHandler struct {
 	stream    *activeStream
 	tsBaseSet bool
 	tsBase    uint32
+	lastTSSet bool
+	lastTS    uint32
 }
 
 func (h *rtmpHandler) OnConnect(_ uint32, cmd *rtmpmsg.NetConnectionConnect) error {
@@ -385,15 +387,29 @@ func sanitizePathPart(v string) string {
 }
 
 func (h *rtmpHandler) normalizeTimestamp(ts uint32) uint32 {
+	var normalized uint32
 	if !h.tsBaseSet {
 		h.tsBaseSet = true
 		h.tsBase = ts
-		return 0
+		normalized = 0
+	} else if ts < h.tsBase {
+		normalized = 0
+	} else {
+		normalized = ts - h.tsBase
 	}
-	if ts < h.tsBase {
-		return 0
+
+	if !h.lastTSSet {
+		h.lastTSSet = true
+		h.lastTS = normalized
+		return normalized
 	}
-	return ts - h.tsBase
+	if normalized <= h.lastTS {
+		h.lastTS++
+		return h.lastTS
+	}
+
+	h.lastTS = normalized
+	return normalized
 }
 
 func resolveConnectApp(cmd *rtmpmsg.NetConnectionConnect) string {
