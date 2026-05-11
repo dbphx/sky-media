@@ -20,12 +20,13 @@ func main() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	log.Printf("loaded config: rtmp_listen=%s rtmp_app=%s rtmp_stream=%s http_listen=%s output_dir=%s master_name=%s segment_time=%d segment_count=%d ffmpeg_bin=%s video_codec=%s video_preset=%s video_tune=%s video_fps=%d audio_codec=%s audio_bitrate=%s audio_sample_rate=%d",
+	log.Printf("loaded config: rtmp_listen=%s http_listen=%s max_streams=%d idle_timeout_sec=%d storage_mode=%s storage_path=%s master_name=%s segment_time=%d segment_count=%d ffmpeg_bin=%s video_codec=%s video_preset=%s video_tune=%s video_fps=%d audio_codec=%s audio_bitrate=%s audio_sample_rate=%d",
 		cfg.RTMPListen,
-		cfg.RTMPApp,
-		cfg.RTMPStream,
 		cfg.HTTPListen,
-		cfg.OutputDir,
+		cfg.MaxStreams,
+		cfg.IdleTimeoutSec,
+		cfg.StorageMode,
+		cfg.StoragePath,
 		cfg.MasterName,
 		cfg.SegmentTime,
 		cfg.SegmentCount,

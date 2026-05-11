@@ -11,5 +11,7 @@ services:
       - "8080:8080"
     volumes:
       - ./config/config.yaml:/app/config/config.yaml:ro
-      - ./data/hls:/data/hls
+      - ./data:/data
+    tmpfs:
+      - /dev/shm/hls:size=512m
     restart: unless-stopped
