@@ -177,15 +177,21 @@ func (m *streamManager) start(app string, streamKey string, argsBuilder func(str
 	key := filepath.ToSlash(filepath.Join(app, streamKey))
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if s, ok := m.streams[key]; ok {
+		// If a stream reconnects while its old pipeline is still in idle timeout,
+		// restart ffmpeg to avoid DTS regressions caused by timestamp reset.
 		if s.timer != nil {
-			s.timer.Stop()
-			s.timer = nil
+			delete(m.streams, key)
+			m.mu.Unlock()
+			stopActiveStream(s)
+			m.mu.Lock()
+		} else {
+			m.mu.Unlock()
+			return s, nil
 		}
-		return s, nil
 	}
 	if len(m.streams) >= m.cfg.MaxStreams {
+		m.mu.Unlock()
 		return nil, fmt.Errorf("max streams reached")
 	}
 
@@ -193,12 +199,14 @@ func (m *streamManager) start(app string, streamKey string, argsBuilder func(str
 	cmd := exec.CommandContext(ctx, m.cfg.FFmpegBin, argsBuilder("pipe:0", key)...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
+		m.mu.Unlock()
 		cancel()
 		return nil, fmt.Errorf("create ffmpeg stdin: %w", err)
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
+		m.mu.Unlock()
 		cancel()
 		_ = stdin.Close()
 		return nil, fmt.Errorf("start ffmpeg: %w", err)
@@ -206,6 +214,7 @@ func (m *streamManager) start(app string, streamKey string, argsBuilder func(str
 
 	enc, err := flv.NewEncoder(stdin, flv.FlagsAudio|flv.FlagsVideo)
 	if err != nil {
+		m.mu.Unlock()
 		cancel()
 		_ = stdin.Close()
 		_ = cmd.Process.Kill()
@@ -219,6 +228,7 @@ func (m *streamManager) start(app string, streamKey string, argsBuilder func(str
 			log.Printf("ffmpeg exited for %s: %v", key, err)
 		}
 	}()
+	m.mu.Unlock()
 	return s, nil
 }
 
@@ -248,11 +258,7 @@ func (m *streamManager) stop(key string) {
 	if s.timer != nil {
 		s.timer.Stop()
 	}
-	s.cancel()
-	_ = s.stdin.Close()
-	if s.cmd.Process != nil {
-		_ = s.cmd.Process.Kill()
-	}
+	stopActiveStream(s)
 }
 
 func (m *streamManager) stopAll() {
@@ -264,6 +270,14 @@ func (m *streamManager) stopAll() {
 	m.mu.Unlock()
 	for _, k := range keys {
 		m.stop(k)
+	}
+}
+
+func stopActiveStream(s *activeStream) {
+	s.cancel()
+	_ = s.stdin.Close()
+	if s.cmd.Process != nil {
+		_ = s.cmd.Process.Kill()
 	}
 }
 
