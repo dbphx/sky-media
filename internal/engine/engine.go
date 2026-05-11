@@ -104,7 +104,10 @@ func (e *Engine) buildFFmpegArgs(inputURL string, streamPath string) []string {
 	args := []string{
 		"-hide_banner",
 		"-loglevel", "warning",
-		"-fflags", "+genpts+igndts",
+		// discardcorrupt + low_delay reduce decoder warnings when RTMP drops
+		// packets or joins mid-GOP (e.g. "co located POCs unavailable").
+		"-fflags", "+genpts+igndts+discardcorrupt",
+		"-flags", "+low_delay",
 		"-i", inputURL,
 	}
 	for i, v := range e.cfg.Variants {

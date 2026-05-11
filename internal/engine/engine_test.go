@@ -33,6 +33,8 @@ func TestBuildFFmpegArgsIncludesABRSettings(t *testing.T) {
 	joined := strings.Join(args, " ")
 
 	checks := []string{
+		"-fflags +genpts+igndts+discardcorrupt",
+		"-flags +low_delay",
 		"-var_stream_map v:0,a:0,name:360p v:1,a:1,name:720p",
 		"-master_pl_name master.m3u8",
 		"-hls_segment_filename /tmp/hls/live/stream1/%v/segment_%06d.ts",
