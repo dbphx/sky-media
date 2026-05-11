@@ -265,12 +265,15 @@ type rtmpHandler struct {
 
 func (h *rtmpHandler) OnConnect(_ uint32, cmd *rtmpmsg.NetConnectionConnect) error {
 	h.app = sanitizePathPart(cmd.Command.App)
+	log.Printf("rtmp connect app=%s", h.app)
 	return nil
 }
 
 func (h *rtmpHandler) OnPublish(_ *rtmp.StreamContext, _ uint32, cmd *rtmpmsg.NetStreamPublish) error {
+	log.Printf("rtmp publish incoming app=%s publishing_name=%s", h.app, cmd.PublishingName)
 	app, key := splitPublishPath(h.app, cmd.PublishingName)
 	if app == "" || key == "" {
+		log.Printf("rtmp publish rejected invalid path app=%s publishing_name=%s", h.app, cmd.PublishingName)
 		return fmt.Errorf("invalid publish path")
 	}
 	s, err := h.manager.start(app, key, func(input, streamPath string) []string {
@@ -283,6 +286,7 @@ func (h *rtmpHandler) OnPublish(_ *rtmp.StreamContext, _ uint32, cmd *rtmpmsg.Ne
 	h.app = app
 	h.streamKey = key
 	h.stream = s
+	log.Printf("rtmp publish accepted app=%s stream_key=%s", h.app, h.streamKey)
 	return nil
 }
 
@@ -332,8 +336,10 @@ func (h *rtmpHandler) OnVideo(ts uint32, payload io.Reader) error {
 
 func (h *rtmpHandler) OnClose() {
 	if h.app == "" || h.streamKey == "" {
+		log.Printf("rtmp close without active stream")
 		return
 	}
+	log.Printf("rtmp close app=%s stream_key=%s", h.app, h.streamKey)
 	h.manager.scheduleStop(filepath.ToSlash(filepath.Join(h.app, h.streamKey)))
 }
 
