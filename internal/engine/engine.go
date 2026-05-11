@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/sky-engine/internal/config"
+	"github.com/sirupsen/logrus"
 	"github.com/yutopp/go-flv"
 	flvtag "github.com/yutopp/go-flv/tag"
 	"github.com/yutopp/go-rtmp"
@@ -64,8 +65,11 @@ func (e *Engine) serveRTMP(ctx context.Context) error {
 
 	srv := rtmp.NewServer(&rtmp.ServerConfig{
 		OnConnect: func(conn net.Conn) (io.ReadWriteCloser, *rtmp.ConnConfig) {
+			logger := logrus.New()
+			logger.SetOutput(os.Stdout)
+			logger.SetLevel(logrus.InfoLevel)
 			h := &rtmpHandler{manager: e.manager}
-			return conn, &rtmp.ConnConfig{Handler: h}
+			return conn, &rtmp.ConnConfig{Handler: h, Logger: logger}
 		},
 	})
 
