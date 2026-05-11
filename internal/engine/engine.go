@@ -69,7 +69,7 @@ func (e *Engine) serveRTMP(ctx context.Context) error {
 			logger.SetOutput(os.Stdout)
 			logger.SetLevel(logrus.InfoLevel)
 			h := &rtmpHandler{manager: e.manager}
-			return conn, &rtmp.ConnConfig{Handler: h, Logger: logger}
+			return conn, e.buildConnConfig(h, logger)
 		},
 	})
 
@@ -85,6 +85,14 @@ func (e *Engine) serveRTMP(ctx context.Context) error {
 		return nil
 	}
 	return err
+}
+
+func (e *Engine) buildConnConfig(h *rtmpHandler, logger *logrus.Logger) *rtmp.ConnConfig {
+	return &rtmp.ConnConfig{
+		Handler:                   h,
+		Logger:                    logger,
+		SkipHandshakeVerification: true,
+	}
 }
 
 func (e *Engine) buildFFmpegArgs(inputURL string, streamPath string) []string {

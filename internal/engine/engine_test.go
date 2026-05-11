@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sky-engine/internal/config"
+	"github.com/sirupsen/logrus"
 	rtmpmsg "github.com/yutopp/go-rtmp/message"
 )
 
@@ -108,5 +109,18 @@ func TestResolveConnectApp(t *testing.T) {
 				t.Fatalf("resolveConnectApp() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestBuildConnConfigSkipsHandshakeVerification(t *testing.T) {
+	t.Parallel()
+
+	logger := logrus.New()
+	cfg := (&Engine{}).buildConnConfig(&rtmpHandler{}, logger)
+	if cfg == nil {
+		t.Fatal("buildConnConfig() returned nil")
+	}
+	if !cfg.SkipHandshakeVerification {
+		t.Fatal("expected SkipHandshakeVerification to be true for SRS compatibility")
 	}
 }
