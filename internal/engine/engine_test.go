@@ -142,3 +142,17 @@ func TestNormalizeTimestamp(t *testing.T) {
 		t.Fatalf("timestamp lower than last output should still move forward, got %d", got)
 	}
 }
+
+func TestNormalizeRateControl(t *testing.T) {
+	t.Parallel()
+
+	maxRate, bufSize := normalizeRateControl("2500k", "2800k", "4200k")
+	if maxRate != "3000k" || bufSize != "7500k" {
+		t.Fatalf("unexpected normalized rates: maxrate=%s bufsize=%s", maxRate, bufSize)
+	}
+
+	maxRate, bufSize = normalizeRateControl("2500k", "3500k", "9000k")
+	if maxRate != "3500k" || bufSize != "9000k" {
+		t.Fatalf("should preserve already-safe rates: maxrate=%s bufsize=%s", maxRate, bufSize)
+	}
+}

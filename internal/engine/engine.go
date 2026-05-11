@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"net/url"
 	"net/http"
@@ -107,14 +108,15 @@ func (e *Engine) buildFFmpegArgs(inputURL string, streamPath string) []string {
 		"-i", inputURL,
 	}
 	for i, v := range e.cfg.Variants {
+		maxRate, bufSize := normalizeRateControl(v.VideoBitrate, v.MaxRate, v.BufSize)
 		args = append(args,
 			"-map", "0:v:0", "-map", "0:a:0",
 			"-c:v:"+strconv.Itoa(i), e.cfg.VideoCodec,
 			"-preset", e.cfg.VideoPreset,
 			"-tune", e.cfg.VideoTune,
 			"-b:v:"+strconv.Itoa(i), v.VideoBitrate,
-			"-maxrate:v:"+strconv.Itoa(i), v.MaxRate,
-			"-bufsize:v:"+strconv.Itoa(i), v.BufSize,
+			"-maxrate:v:"+strconv.Itoa(i), maxRate,
+			"-bufsize:v:"+strconv.Itoa(i), bufSize,
 			"-s:v:"+strconv.Itoa(i), fmt.Sprintf("%dx%d", v.Width, v.Height),
 			"-g", gop,
 			"-keyint_min", gop,
@@ -453,6 +455,53 @@ func firstPathPart(v string) string {
 	}
 	parts := strings.Split(clean, "/")
 	return sanitizePathPart(parts[0])
+}
+
+func normalizeRateControl(videoBitrate string, maxRate string, bufSize string) (string, string) {
+	vb, okVB := parseBitrateKbps(videoBitrate)
+	mr, okMR := parseBitrateKbps(maxRate)
+	bs, okBS := parseBitrateKbps(bufSize)
+	if !okVB {
+		return maxRate, bufSize
+	}
+
+	minMR := int(math.Ceil(float64(vb) * 1.2))
+	if !okMR || mr < minMR {
+		mr = minMR
+	}
+
+	minBS := int(math.Ceil(float64(mr) * 2.5))
+	if !okBS || bs < minBS {
+		bs = minBS
+	}
+
+	return fmt.Sprintf("%dk", mr), fmt.Sprintf("%dk", bs)
+}
+
+func parseBitrateKbps(v string) (int, bool) {
+	s := strings.ToLower(strings.TrimSpace(v))
+	if s == "" {
+		return 0, false
+	}
+
+	multiplier := 1.0
+	switch {
+	case strings.HasSuffix(s, "k"):
+		s = strings.TrimSuffix(s, "k")
+		multiplier = 1.0
+	case strings.HasSuffix(s, "m"):
+		s = strings.TrimSuffix(s, "m")
+		multiplier = 1000.0
+	default:
+		return 0, false
+	}
+
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil || f <= 0 {
+		return 0, false
+	}
+
+	return int(math.Round(f * multiplier)), true
 }
 
 func (e *Engine) serveHTTP() error {
