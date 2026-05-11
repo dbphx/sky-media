@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sky-engine/internal/config"
+	rtmpmsg "github.com/yutopp/go-rtmp/message"
 )
 
 func TestBuildFFmpegArgsIncludesABRSettings(t *testing.T) {
@@ -53,5 +54,59 @@ func TestSplitPublishPath(t *testing.T) {
 	app, key = splitPublishPath("", "app2/stream2")
 	if app != "app2" || key != "stream2" {
 		t.Fatalf("unexpected split with full path: %s %s", app, key)
+	}
+}
+
+func TestResolveConnectApp(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		cmd  *rtmpmsg.NetConnectionConnect
+		want string
+	}{
+		{
+			name: "uses app when present",
+			cmd: &rtmpmsg.NetConnectionConnect{
+				Command: rtmpmsg.NetConnectionConnectCommand{
+					App: "ducbph-mtx",
+				},
+			},
+			want: "ducbph-mtx",
+		},
+		{
+			name: "extracts app from tcurl when app is empty",
+			cmd: &rtmpmsg.NetConnectionConnect{
+				Command: rtmpmsg.NetConnectionConnectCommand{
+					TCURL: "rtmp://10.155.2.18:19035/ducbph-mtx",
+				},
+			},
+			want: "ducbph-mtx",
+		},
+		{
+			name: "extracts first path segment from tcurl",
+			cmd: &rtmpmsg.NetConnectionConnect{
+				Command: rtmpmsg.NetConnectionConnectCommand{
+					TCURL: "rtmp://instream.media.insky.io.vn:1935/ducbph-mtx/abc",
+				},
+			},
+			want: "ducbph-mtx",
+		},
+		{
+			name: "returns empty for nil command",
+			cmd:  nil,
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := resolveConnectApp(tt.cmd)
+			if got != tt.want {
+				t.Fatalf("resolveConnectApp() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

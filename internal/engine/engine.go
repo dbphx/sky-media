@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/url"
 	"net/http"
 	"os"
 	"os/exec"
@@ -264,8 +265,12 @@ type rtmpHandler struct {
 }
 
 func (h *rtmpHandler) OnConnect(_ uint32, cmd *rtmpmsg.NetConnectionConnect) error {
-	h.app = sanitizePathPart(cmd.Command.App)
-	log.Printf("rtmp connect app=%s", h.app)
+	h.app = resolveConnectApp(cmd)
+	if cmd == nil {
+		log.Printf("rtmp connect app=%s (nil connect command)", h.app)
+		return nil
+	}
+	log.Printf("rtmp connect app=%s raw_app=%s tcurl=%s", h.app, cmd.Command.App, cmd.Command.TCURL)
 	return nil
 }
 
@@ -361,6 +366,35 @@ func sanitizePathPart(v string) string {
 		return ""
 	}
 	return v
+}
+
+func resolveConnectApp(cmd *rtmpmsg.NetConnectionConnect) string {
+	if cmd == nil {
+		return ""
+	}
+
+	if app := firstPathPart(cmd.Command.App); app != "" {
+		return app
+	}
+
+	tcurl := strings.TrimSpace(cmd.Command.TCURL)
+	if tcurl == "" {
+		return ""
+	}
+	u, err := url.Parse(tcurl)
+	if err != nil {
+		return ""
+	}
+	return firstPathPart(u.Path)
+}
+
+func firstPathPart(v string) string {
+	clean := strings.TrimSpace(strings.Trim(v, "/"))
+	if clean == "" {
+		return ""
+	}
+	parts := strings.Split(clean, "/")
+	return sanitizePathPart(parts[0])
 }
 
 func (e *Engine) serveHTTP() error {
