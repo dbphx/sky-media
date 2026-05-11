@@ -124,3 +124,18 @@ func TestBuildConnConfigSkipsHandshakeVerification(t *testing.T) {
 		t.Fatal("expected SkipHandshakeVerification to be true for SRS compatibility")
 	}
 }
+
+func TestNormalizeTimestamp(t *testing.T) {
+	t.Parallel()
+
+	h := &rtmpHandler{}
+	if got := h.normalizeTimestamp(10286703); got != 0 {
+		t.Fatalf("first timestamp should normalize to 0, got %d", got)
+	}
+	if got := h.normalizeTimestamp(10286736); got != 33 {
+		t.Fatalf("expected normalized delta 33, got %d", got)
+	}
+	if got := h.normalizeTimestamp(10286600); got != 0 {
+		t.Fatalf("timestamp smaller than base should clamp to 0, got %d", got)
+	}
+}

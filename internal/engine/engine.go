@@ -104,7 +104,6 @@ func (e *Engine) buildFFmpegArgs(inputURL string, streamPath string) []string {
 		"-hide_banner",
 		"-loglevel", "warning",
 		"-fflags", "+genpts+igndts",
-		"-use_wallclock_as_timestamps", "1",
 		"-i", inputURL,
 	}
 	for i, v := range e.cfg.Variants {
@@ -138,7 +137,7 @@ func (e *Engine) buildFFmpegArgs(inputURL string, streamPath string) []string {
 	_ = os.MkdirAll(streamRoot, 0o755)
 
 	args = append(args,
-		"-vsync", "cfr",
+		"-fps_mode", "passthrough",
 		"-af", "aresample=async=1:first_pts=0",
 		"-avoid_negative_ts", "make_zero",
 		"-max_interleave_delta", "0",
@@ -274,6 +273,8 @@ type rtmpHandler struct {
 	app       string
 	streamKey string
 	stream    *activeStream
+	tsBaseSet bool
+	tsBase    uint32
 }
 
 func (h *rtmpHandler) OnConnect(_ uint32, cmd *rtmpmsg.NetConnectionConnect) error {
@@ -311,6 +312,7 @@ func (h *rtmpHandler) OnSetDataFrame(ts uint32, data *rtmpmsg.NetStreamSetDataFr
 	if h.stream == nil {
 		return nil
 	}
+	ts = h.normalizeTimestamp(ts)
 	r := bytes.NewReader(data.Payload)
 	var script flvtag.ScriptData
 	if err := flvtag.DecodeScriptData(r, &script); err != nil {
@@ -323,6 +325,7 @@ func (h *rtmpHandler) OnAudio(ts uint32, payload io.Reader) error {
 	if h.stream == nil {
 		return nil
 	}
+	ts = h.normalizeTimestamp(ts)
 	var audio flvtag.AudioData
 	if err := flvtag.DecodeAudioData(payload, &audio); err != nil {
 		return err
@@ -339,6 +342,7 @@ func (h *rtmpHandler) OnVideo(ts uint32, payload io.Reader) error {
 	if h.stream == nil {
 		return nil
 	}
+	ts = h.normalizeTimestamp(ts)
 	var video flvtag.VideoData
 	if err := flvtag.DecodeVideoData(payload, &video); err != nil {
 		return err
@@ -378,6 +382,18 @@ func sanitizePathPart(v string) string {
 		return ""
 	}
 	return v
+}
+
+func (h *rtmpHandler) normalizeTimestamp(ts uint32) uint32 {
+	if !h.tsBaseSet {
+		h.tsBaseSet = true
+		h.tsBase = ts
+		return 0
+	}
+	if ts < h.tsBase {
+		return 0
+	}
+	return ts - h.tsBase
 }
 
 func resolveConnectApp(cmd *rtmpmsg.NetConnectionConnect) string {
