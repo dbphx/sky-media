@@ -23,7 +23,8 @@ For dynamic multi-stream notes, see `docs/stage2-multistream.md`.
 - `internal/config/config.go`: config model + loader + defaults.
 - `internal/engine/engine.go`: FFmpeg pipeline + HTTP serving.
 - `internal/config/config_test.go`: unit tests for config loading/validation.
-- `internal/engine/engine_test.go`: unit tests for FFmpeg args generation.
+- `internal/transcode/pipeline_test.go`: unit tests for FFmpeg args generation.
+- `internal/ingest/rtmp/server_test.go`: unit tests for RTMP ingest parsing.
 - `config/config.yaml`: runtime config.
 
 ## Requirements
