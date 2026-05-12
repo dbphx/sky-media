@@ -20,6 +20,12 @@ type Variant struct {
 type Config struct {
 	RTMPListen      string    `yaml:"rtmp_listen"`
 	HTTPListen      string    `yaml:"http_listen"`
+	// RTSPIngestAPI enables POST/DELETE /api/ingest/rtsp to pull RTSP URLs into HLS (same paths as RTMP).
+	RTSPIngestAPI bool `yaml:"rtsp_ingest_api"`
+	// RTSPTransport is passed to ffmpeg as -rtsp_transport (e.g. tcp). Empty omits the flag.
+	RTSPTransport string `yaml:"rtsp_transport"`
+	// RTSPStimeoutUSec is ffmpeg -stimeout for RTSP inputs (microseconds). 0 uses default.
+	RTSPStimeoutUSec int `yaml:"rtsp_stimeout_usec"`
 	MaxStreams      int       `yaml:"max_streams"`
 	IdleTimeoutSec  int       `yaml:"idle_timeout_sec"`
 	StorageMode     string    `yaml:"storage_mode"`
@@ -63,6 +69,9 @@ func (c *Config) applyDefaults() {
 	}
 	if c.HTTPListen == "" {
 		c.HTTPListen = ":8080"
+	}
+	if c.RTSPStimeoutUSec <= 0 {
+		c.RTSPStimeoutUSec = 5_000_000
 	}
 	if c.MaxStreams <= 0 {
 		c.MaxStreams = 100

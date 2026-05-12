@@ -158,3 +158,15 @@ func TestNormalizeRateControl(t *testing.T) {
 		t.Fatalf("should preserve already-safe rates: maxrate=%s bufsize=%s", maxRate, bufSize)
 	}
 }
+
+func TestRTSPInputFlags(t *testing.T) {
+	t.Parallel()
+	e := &Engine{cfg: config.Config{RTSPTransport: "tcp", RTSPStimeoutUSec: 5_000_000}}
+	flags := e.rtspInputFlags("rtsp://192.168.1.10/stream")
+	if len(flags) != 4 || flags[0] != "-rtsp_transport" || flags[1] != "tcp" || flags[2] != "-stimeout" || flags[3] != "5000000" {
+		t.Fatalf("unexpected rtsp flags: %#v", flags)
+	}
+	if got := e.rtspInputFlags("pipe:0"); got != nil {
+		t.Fatalf("expected nil flags for non-rtsp input, got %#v", got)
+	}
+}

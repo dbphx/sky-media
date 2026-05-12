@@ -1,5 +1,8 @@
 rtmp_listen: ":1935"
 http_listen: ":8080"
+rtsp_ingest_api: false
+rtsp_transport: "tcp"
+rtsp_stimeout_usec: 5000000
 max_streams: 100
 idle_timeout_sec: 30
 storage_mode: "memory"

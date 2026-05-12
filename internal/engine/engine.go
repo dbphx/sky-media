@@ -108,8 +108,9 @@ func (e *Engine) buildFFmpegArgs(inputURL string, streamPath string) []string {
 		// packets or joins mid-GOP (e.g. "co located POCs unavailable").
 		"-fflags", "+genpts+igndts+discardcorrupt",
 		"-flags", "+low_delay",
-		"-i", inputURL,
 	}
+	args = append(args, e.rtspInputFlags(inputURL)...)
+	args = append(args, "-i", inputURL)
 	for i, v := range e.cfg.Variants {
 		maxRate, bufSize := normalizeRateControl(v.VideoBitrate, v.MaxRate, v.BufSize)
 		args = append(args,
@@ -158,6 +159,21 @@ func (e *Engine) buildFFmpegArgs(inputURL string, streamPath string) []string {
 	)
 
 	return args
+}
+
+func (e *Engine) rtspInputFlags(inputURL string) []string {
+	low := strings.ToLower(strings.TrimSpace(inputURL))
+	if !strings.HasPrefix(low, "rtsp://") && !strings.HasPrefix(low, "rtsps://") {
+		return nil
+	}
+	var out []string
+	if t := strings.TrimSpace(e.cfg.RTSPTransport); t != "" {
+		out = append(out, "-rtsp_transport", t)
+	}
+	if e.cfg.RTSPStimeoutUSec > 0 {
+		out = append(out, "-stimeout", strconv.Itoa(e.cfg.RTSPStimeoutUSec))
+	}
+	return out
 }
 
 type streamManager struct {
@@ -280,8 +296,10 @@ func (m *streamManager) stopAll() {
 
 func stopActiveStream(s *activeStream) {
 	s.cancel()
-	_ = s.stdin.Close()
-	if s.cmd.Process != nil {
+	if s.stdin != nil {
+		_ = s.stdin.Close()
+	}
+	if s.cmd != nil && s.cmd.Process != nil {
 		_ = s.cmd.Process.Kill()
 	}
 }
@@ -514,7 +532,14 @@ func (e *Engine) serveHTTP() error {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	if e.cfg.RTSPIngestAPI {
+		mux.HandleFunc("/api/ingest/rtsp", e.handleRTSPIngestCreate)
+		mux.HandleFunc("/api/ingest/rtsp/", e.handleRTSPIngestDelete)
+	}
 
 	log.Printf("http hls serving on %s (path: /hls/)", e.cfg.HTTPListen)
+	if e.cfg.RTSPIngestAPI {
+		log.Printf("rtsp ingest api: POST /api/ingest/rtsp, DELETE /api/ingest/rtsp/{app}/{stream}")
+	}
 	return http.ListenAndServe(e.cfg.HTTPListen, mux)
 }
