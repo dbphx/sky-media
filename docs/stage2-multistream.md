@@ -19,9 +19,9 @@ Each stream gets an isolated output tree:
 
 Playback examples:
 
-- `http://localhost:8080/hls/live/stream1/master.m3u8`
-- `http://localhost:8080/hls/live/stream2/master.m3u8`
-- `http://localhost:8080/hls/live/stream1/360p/index.m3u8`
+- `http://localhost:8080/live/stream1/master.m3u8`
+- `http://localhost:8080/live/stream2/master.m3u8`
+- `http://localhost:8080/live/stream1/360p/index.m3u8`
 
 ## Runtime Controls
 

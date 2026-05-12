@@ -8,10 +8,10 @@ This stage adds multi-resolution HLS output from a single RTMP input endpoint.
 
 ## Output
 
-- HLS master playlist: `http://<host>:8080/hls/master.m3u8`
+- HLS master playlist: `http://<host>:8080/master.m3u8`
 - Variant playlists:
-  - `http://<host>:8080/hls/360p/index.m3u8`
-  - `http://<host>:8080/hls/720p/index.m3u8`
+  - `http://<host>:8080/360p/index.m3u8`
+  - `http://<host>:8080/720p/index.m3u8`
 
 ## Config Fields
 

@@ -8,8 +8,8 @@ import (
 	"log"
 	"math"
 	"net"
-	"net/url"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sky-engine/internal/config"
 	"github.com/sirupsen/logrus"
+	"github.com/sky-engine/internal/config"
 	"github.com/yutopp/go-flv"
 	flvtag "github.com/yutopp/go-flv/tag"
 	"github.com/yutopp/go-rtmp"
@@ -114,7 +114,7 @@ func (e *Engine) buildFFmpegArgs(inputURL string, streamPath string) []string {
 	for i, v := range e.cfg.Variants {
 		maxRate, bufSize := normalizeRateControl(v.VideoBitrate, v.MaxRate, v.BufSize)
 		args = append(args,
-			"-map", "0:v:0", "-map", "0:a:0",
+			"-map", "0:v:0?", "-map", "0:a:0?",
 			"-c:v:"+strconv.Itoa(i), e.cfg.VideoCodec,
 			"-preset", e.cfg.VideoPreset,
 			"-tune", e.cfg.VideoTune,
@@ -527,7 +527,7 @@ func parseBitrateKbps(v string) (int, bool) {
 
 func (e *Engine) serveHTTP() error {
 	mux := http.NewServeMux()
-	mux.Handle("/hls/", http.StripPrefix("/hls/", http.FileServer(http.Dir(e.cfg.StoragePath))))
+	mux.Handle("/", http.FileServer(http.Dir(e.cfg.StoragePath)))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -537,7 +537,7 @@ func (e *Engine) serveHTTP() error {
 		mux.HandleFunc("/api/ingest/rtsp/", e.handleRTSPIngestDelete)
 	}
 
-	log.Printf("http hls serving on %s (path: /hls/)", e.cfg.HTTPListen)
+	log.Printf("http hls serving on %s (path: /)", e.cfg.HTTPListen)
 	if e.cfg.RTSPIngestAPI {
 		log.Printf("rtsp ingest api: POST /api/ingest/rtsp, DELETE /api/ingest/rtsp/{app}/{stream}")
 	}

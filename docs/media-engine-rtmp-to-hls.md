@@ -35,7 +35,7 @@ Publisher (OBS/Encoder)
          -> [Fast path] Transmux -> HLS Muxer
          -> [Fallback]  Transcode -> HLS Muxer
             -> Segment Storage (local NVMe/tmpfs)
-               -> HTTP HLS Service (/hls/{app}/{stream}/index.m3u8)
+               -> HTTP HLS Service (/{app}/{stream}/index.m3u8)
                   -> CDN/Player
 ```
 
@@ -63,7 +63,7 @@ Publisher (OBS/Encoder)
 - Tao `master.m3u8` (neu ABR) va `index.m3u8` cho tung variant.
 - Segment co the la MPEG-TS (`.ts`) hoac fMP4 (`.m4s`).
 - Ghi segment theo pattern append -> atomic rename de playlist nhat quan.
-- Serve endpoint: `/hls/{app}/{stream}/index.m3u8`.
+- Serve endpoint: `/{app}/{stream}/index.m3u8`.
 
 ## 4) Lua chon dinh dang HLS
 
@@ -95,7 +95,7 @@ Khuyen nghi MVP:
 
 ### 6.1 Endpoint goi y
 - `POST /v1/streams/{app}/{name}/publish` (auth hook optional).
-- `GET /hls/{app}/{name}/index.m3u8`.
+- `GET /{app}/{name}/index.m3u8`.
 - `GET /healthz`.
 - `GET /metrics` (Prometheus).
 

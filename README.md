@@ -74,10 +74,10 @@ RTMP ingest URL format from this config:
 `rtmp://<host>:1935/{app}/{streamKey}`
 
 HLS playback URLs:
-- Stream1 master: `http://localhost:8080/hls/live/stream1/master.m3u8`
-- Stream2 master: `http://localhost:8080/hls/live/stream2/master.m3u8`
-- Stream1 360p: `http://localhost:8080/hls/live/stream1/360p/index.m3u8`
-- Stream1 720p: `http://localhost:8080/hls/live/stream1/720p/index.m3u8`
+- Stream1 master: `http://localhost:8080/live/stream1/master.m3u8`
+- Stream2 master: `http://localhost:8080/live/stream2/master.m3u8`
+- Stream1 360p: `http://localhost:8080/live/stream1/360p/index.m3u8`
+- Stream1 720p: `http://localhost:8080/live/stream1/720p/index.m3u8`
 
 Storage options:
 - `storage_mode`: `memory` or `disk` (default `memory`).
