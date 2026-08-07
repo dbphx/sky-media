@@ -59,6 +59,7 @@ type Stream struct {
 	enc    *flv.Encoder
 	cancel context.CancelFunc
 	timer  *time.Timer
+	done   chan struct{}
 }
 
 func NewManager(cfg Config) *Manager {
@@ -112,13 +113,15 @@ func (m *Manager) StartRTMP(app string, streamKey string) (*Stream, error) {
 		return nil, fmt.Errorf("create flv encoder: %w", err)
 	}
 
-	s := &Stream{cmd: cmd, stdin: stdin, enc: enc, cancel: cancel}
+	s := &Stream{cmd: cmd, stdin: stdin, enc: enc, cancel: cancel, done: make(chan struct{})}
 	m.streams[key] = s
-	go func() {
+	go func(snap *Stream) {
+		defer close(snap.done)
 		if err := cmd.Wait(); err != nil {
 			log.Printf("ffmpeg exited for %s: %v", key, err)
 		}
-	}()
+		m.removeStreamIfCurrent(key, snap)
+	}(s)
 	m.mu.Unlock()
 	return s, nil
 }
@@ -149,25 +152,30 @@ func (m *Manager) StartPull(app string, streamKey string, inputURL string) (*Str
 		return nil, fmt.Errorf("start ffmpeg: %w", err)
 	}
 
-	s := &Stream{cmd: cmd, stdin: nil, enc: nil, cancel: cancel}
+	s := &Stream{cmd: cmd, stdin: nil, enc: nil, cancel: cancel, done: make(chan struct{})}
 	m.streams[key] = s
-	go func(snap *Stream, c *exec.Cmd) {
-		if err := c.Wait(); err != nil {
+	go func(snap *Stream) {
+		defer close(snap.done)
+		if err := cmd.Wait(); err != nil {
 			log.Printf("ffmpeg exited for %s: %v", key, err)
 		}
-		m.mu.Lock()
-		defer m.mu.Unlock()
-		cur, ok := m.streams[key]
-		if !ok || cur != snap {
-			return
-		}
-		if cur.timer != nil {
-			cur.timer.Stop()
-		}
-		delete(m.streams, key)
-	}(s, cmd)
+		m.removeStreamIfCurrent(key, snap)
+	}(s)
 	m.mu.Unlock()
 	return s, nil
+}
+
+func (m *Manager) removeStreamIfCurrent(key string, snap *Stream) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cur, ok := m.streams[key]
+	if !ok || cur != snap {
+		return
+	}
+	if cur.timer != nil {
+		cur.timer.Stop()
+	}
+	delete(m.streams, key)
 }
 
 func (m *Manager) ScheduleStop(app string, streamKey string) {
@@ -229,12 +237,42 @@ func (s *Stream) EncodeTag(tag *flvtag.FlvTag) error {
 }
 
 func stopStream(s *Stream) {
-	s.cancel()
+	if s == nil {
+		return
+	}
+	if s.timer != nil {
+		s.timer.Stop()
+	}
 	if s.stdin != nil {
 		_ = s.stdin.Close()
 	}
+	if waitStreamDone(s, 3*time.Second) {
+		return
+	}
+	if s.cmd != nil && s.cmd.Process != nil {
+		_ = s.cmd.Process.Signal(os.Interrupt)
+	}
+	if waitStreamDone(s, 2*time.Second) {
+		return
+	}
+	s.cancel()
 	if s.cmd != nil && s.cmd.Process != nil {
 		_ = s.cmd.Process.Kill()
+	}
+	_ = waitStreamDone(s, 1*time.Second)
+}
+
+func waitStreamDone(s *Stream, timeout time.Duration) bool {
+	if s.done == nil {
+		return true
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-s.done:
+		return true
+	case <-timer.C:
+		return false
 	}
 }
 

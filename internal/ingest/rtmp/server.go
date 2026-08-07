@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 	"github.com/sky-engine/internal/transcode"
@@ -17,6 +18,12 @@ import (
 	"github.com/yutopp/go-rtmp"
 	rtmpmsg "github.com/yutopp/go-rtmp/message"
 )
+
+var mediaBufferPool = sync.Pool{
+	New: func() any {
+		return new(bytes.Buffer)
+	},
+}
 
 type Server struct {
 	listen  string
@@ -127,7 +134,12 @@ func (h *handler) OnAudio(ts uint32, payload io.Reader) error {
 	if err := flvtag.DecodeAudioData(payload, &audio); err != nil {
 		return err
 	}
-	body := new(bytes.Buffer)
+	body := mediaBufferPool.Get().(*bytes.Buffer)
+	body.Reset()
+	defer func() {
+		body.Reset()
+		mediaBufferPool.Put(body)
+	}()
 	if _, err := io.Copy(body, audio.Data); err != nil {
 		return err
 	}
@@ -144,7 +156,12 @@ func (h *handler) OnVideo(ts uint32, payload io.Reader) error {
 	if err := flvtag.DecodeVideoData(payload, &video); err != nil {
 		return err
 	}
-	body := new(bytes.Buffer)
+	body := mediaBufferPool.Get().(*bytes.Buffer)
+	body.Reset()
+	defer func() {
+		body.Reset()
+		mediaBufferPool.Put(body)
+	}()
 	if _, err := io.Copy(body, video.Data); err != nil {
 		return err
 	}

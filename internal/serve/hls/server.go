@@ -3,6 +3,8 @@ package hls
 import (
 	"log"
 	"net/http"
+	"path/filepath"
+	"strings"
 )
 
 type Server struct {
@@ -26,7 +28,7 @@ func New(listen string, storagePath string, opts ...Option) *Server {
 
 func (s *Server) Serve() error {
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(s.storagePath)))
+	mux.Handle("/", hlsFileServer(s.storagePath))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -41,4 +43,25 @@ func (s *Server) Serve() error {
 		log.Printf("rtsp ingest api: POST /api/ingest/rtsp, DELETE /api/ingest/rtsp/{app}/{stream}")
 	}
 	return http.ListenAndServe(s.listen, mux)
+}
+
+func hlsFileServer(storagePath string) http.Handler {
+	files := http.FileServer(http.Dir(storagePath))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Range")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		switch strings.ToLower(filepath.Ext(r.URL.Path)) {
+		case ".m3u8":
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		case ".ts":
+			w.Header().Set("Cache-Control", "public, max-age=60")
+		}
+		files.ServeHTTP(w, r)
+	})
 }
