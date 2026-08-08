@@ -180,9 +180,58 @@ curl http://localhost:8080/healthz
 
 ## Test
 
+Chạy unit test:
+
 ```bash
 go test ./...
 ```
+
+Chạy service local:
+
+```bash
+go run ./cmd/engine -config ./config/config.yaml
+```
+
+Mở terminal khác và kiểm tra health endpoint:
+
+```bash
+curl http://localhost:8080/healthz
+```
+
+Kết quả mong muốn:
+
+```text
+ok
+```
+
+Push một file mẫu qua RTMP:
+
+```bash
+ffmpeg -re -stream_loop -1 -i input.mp4 \
+  -c:v libx264 -c:a aac -f flv \
+  rtmp://localhost:1935/live/stream1
+```
+
+Chờ vài giây để service tạo segment HLS, sau đó kiểm tra master playlist:
+
+```bash
+curl http://localhost:8080/live/stream1/master.m3u8
+```
+
+Response nên có nội dung playlist HLS như `#EXTM3U` và các variant playlist. Bạn cũng có thể mở URL này bằng VLC, Safari hoặc HLS player:
+
+```text
+http://localhost:8080/live/stream1/master.m3u8
+```
+
+Test bằng Docker Compose:
+
+```bash
+docker compose up --build -d
+docker compose logs -f media-engine
+```
+
+Sau đó dùng cùng RTMP push URL và HLS playback URL ở trên.
 
 ## Ghi chú vận hành
 

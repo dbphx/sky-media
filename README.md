@@ -178,11 +178,60 @@ Health check:
 curl http://localhost:8080/healthz
 ```
 
-## Tests
+## Testing
+
+Run unit tests:
 
 ```bash
 go test ./...
 ```
+
+Run the service locally:
+
+```bash
+go run ./cmd/engine -config ./config/config.yaml
+```
+
+In another terminal, check the health endpoint:
+
+```bash
+curl http://localhost:8080/healthz
+```
+
+Expected response:
+
+```text
+ok
+```
+
+Push a sample file through RTMP:
+
+```bash
+ffmpeg -re -stream_loop -1 -i input.mp4 \
+  -c:v libx264 -c:a aac -f flv \
+  rtmp://localhost:1935/live/stream1
+```
+
+Wait a few seconds for HLS segments to be generated, then check the master playlist:
+
+```bash
+curl http://localhost:8080/live/stream1/master.m3u8
+```
+
+The response should include HLS playlist content such as `#EXTM3U` and variant playlist entries. You can also open the same URL in VLC, Safari, or an HLS-capable player:
+
+```text
+http://localhost:8080/live/stream1/master.m3u8
+```
+
+To test with Docker Compose:
+
+```bash
+docker compose up --build -d
+docker compose logs -f media-engine
+```
+
+Then use the same RTMP push and HLS playback URLs above.
 
 ## Operational Notes
 
